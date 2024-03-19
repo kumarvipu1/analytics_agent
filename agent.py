@@ -122,7 +122,7 @@ def capture_output():
         sys.stdout = old_out
 
 
-def decode_and_run(response, chat_history, st1=None, st2=None):
+def decode_and_run(response, chat_history):
     decoded = bytes(str(response), "utf-8").decode("unicode_escape")
 
     pattern_code = r'```python\s*([\s\S]*?)\s*```'
@@ -134,24 +134,33 @@ def decode_and_run(response, chat_history, st1=None, st2=None):
     if code_match:
         for match in code_match:
             obj = exec(match)
-            if st1:
+            if st:
                 if type(obj) is PlotlyFigure:
-                    st1.plotly_chart(obj)
+                    st.plotly_chart(obj)
                 elif type(obj) is MatplotFigure:
-                    st1.pyplot(obj)
+                    st.pyplot(obj)
                 else:
                     with capture_output() as captured:
                         output = captured.getvalue() + '\n'
-                    st1.write(output)
+                        chat_history += f'\nObservation : {output}'
+                        st.write(output)
             else:
+                chat_history += f'\nObservation : {output}'
                 print('no streamlit figure object found')
                 break
 
     if comment_match:
         for match in comment_match:
-            if st2:
-                st2.write(match)
+            if st:
+                chat_history += f'\nObservation : {output}'
+                st.write(match)
             else:
+                chat_history += f'\nObservation : {output}'
                 print('no streamlit text object found')
+
+
+# TODO Create the streamlit app interface
+
+
 
 
