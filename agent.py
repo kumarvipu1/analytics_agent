@@ -7,6 +7,8 @@ import matplotlib
 from langchain.llms import OpenAI
 import json
 import warnings
+from plotly.graph_objects import Figure as PlotlyFigure
+from matplotlib.figure import Figure as MatplotFigure
 import time
 import seaborn as sns
 import streamlit as st
@@ -76,7 +78,7 @@ display(fig)
 display(analytics df)
 ```
 NOW EXPLAIN THE ANALYSIS
-```explaination
+```explanation
 EXPLANATION OF ABOVE ANALYSIS IN TEXT FORMAT
 ```
 <<Template>>
@@ -107,4 +109,49 @@ def prompt_builder(user_prompt=None, chat_history=None):
     if chat_history:
         system_prompt += f"""\n{chat_history}\n"""
 
-    return (system_prompt)
+    return tuple(system_prompt)
+
+
+def capture_output():
+    new_out = io.StringIO()
+    old_out = sys.stdout
+    try:
+        sys.stdout = new_out
+        yield new_out
+    finally:
+        sys.stdout = old_out
+
+
+def decode_and_run(response, chat_history, st1=None, st2=None):
+    decoded = bytes(str(response), "utf-8").decode("unicode_escape")
+
+    pattern_code = r'```python\s*([\s\S]*?)\s*```'
+    pattern_comment = r'```explanation\s*([\s\S]*?)\s*```'
+
+    code_match = re.findall(pattern_code, decoded)
+    comment_match = re.findall(pattern_comment, decoded)
+
+    if code_match:
+        for match in code_match:
+            obj = exec(match)
+            if st1:
+                if type(obj) is PlotlyFigure:
+                    st1.plotly_chart(obj)
+                elif type(obj) is MatplotFigure:
+                    st1.pyplot(obj)
+                else:
+                    with capture_output() as captured:
+                        output = captured.getvalue() + '\n'
+                    st1.write(output)
+            else:
+                print('no streamlit figure object found')
+                break
+
+    if comment_match:
+        for match in comment_match:
+            if st2:
+                st2.write(match)
+            else:
+                print('no streamlit text object found')
+
+
